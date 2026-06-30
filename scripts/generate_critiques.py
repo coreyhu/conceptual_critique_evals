@@ -110,7 +110,9 @@ def _summarize(records: list[CritiqueRecord]) -> None:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--argument", default="argument.txt", help="path to the markdown argument file"
+        "--argument",
+        default="arguments/organization_metrics.txt",
+        help="path to the markdown argument file",
     )
     parser.add_argument("--samples", type=int, default=3, help="critiques per model")
     parser.add_argument(
@@ -171,4 +173,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
