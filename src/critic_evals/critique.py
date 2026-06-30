@@ -1,4 +1,4 @@
-"""Eliciting a critique from a model.
+"""Generating a critique from a model.
 
 A single source for the critique prompt and the call that turns a model's
 response into a `CritiqueRecord`, so every caller elicits critiques identically.
@@ -61,7 +61,7 @@ def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def elicit_critique(
+async def create_critique(
     client: AnthropicClient,
     model: ModelSpec,
     item: ArgumentItem,

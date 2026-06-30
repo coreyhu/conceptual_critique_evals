@@ -21,7 +21,7 @@ from critic_evals.critique import (
     CRITIQUE_PROMPTS,
     DEFAULT_VARIANT,
     build_prompt,
-    elicit_critique,
+    create_critique,
 )
 from critic_evals.llm.client import AnthropicClient
 from critic_evals.llm.models import DEFAULT_MODELS, ModelSpec, resolve
@@ -56,7 +56,7 @@ async def generate(
         async def one(spec: ModelSpec, sample: int) -> CritiqueRecord:
             async with semaphore:
                 try:
-                    return await elicit_critique(
+                    return await create_critique(
                         client,
                         spec,
                         item,

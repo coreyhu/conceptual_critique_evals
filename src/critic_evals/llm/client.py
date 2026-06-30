@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, Omit
+from anthropic.types.output_config_param import OutputConfigParam
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +17,7 @@ class Completion:
     input_tokens: int
     output_tokens: int
     request_id: str | None
+    parsed: dict[str, object] | None = None  # populated when a `schema` is given
 
 
 class AnthropicClient:
@@ -42,12 +45,20 @@ class AnthropicClient:
         system: str,
         prompt: str,
         max_tokens: int = 4096,
+        schema: dict[str, object] | None = None,
     ) -> Completion:
+        """Single-turn completion. With `schema`, constrains output to it and fills `.parsed`."""
+        output_config: OutputConfigParam | Omit = (
+            {"format": {"type": "json_schema", "schema": schema}}
+            if schema is not None
+            else Omit()
+        )
         message = await self._client.messages.create(
             model=model_id,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": prompt}],
+            output_config=output_config,
         )
         text = "".join(block.text for block in message.content if block.type == "text")
         return Completion(
@@ -57,6 +68,7 @@ class AnthropicClient:
             input_tokens=message.usage.input_tokens,
             output_tokens=message.usage.output_tokens,
             request_id=message._request_id,  # public despite the underscore
+            parsed=json.loads(text) if schema is not None else None,
         )
 
     async def aclose(self) -> None:

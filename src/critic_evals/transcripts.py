@@ -78,3 +78,10 @@ def read_jsonl_dicts(path: str | Path) -> list[CritiqueRow]:
     path = Path(path)
     with path.open("r", encoding="utf-8") as fh:
         return [json.loads(line) for line in fh if line.strip()]
+
+
+def read_rows(path: str | Path) -> list[dict[str, object]]:
+    """Read any JSONL file into plain dicts (for schemas without a typed reader)."""
+    path = Path(path)
+    with path.open("r", encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
