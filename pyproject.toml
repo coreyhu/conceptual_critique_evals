@@ -9,12 +9,15 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "anthropic>=0.113.0",
+    "markdown>=3.10.2",
     "python-dotenv>=1.2.2",
 ]
-
-[project.scripts]
-critic-evals = "critic_evals:main"
 
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
