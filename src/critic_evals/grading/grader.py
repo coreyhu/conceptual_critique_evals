@@ -51,7 +51,7 @@ class LLMGrader(BaseGrader):
 
     __slots__ = ()
 
-    max_tokens: int
+    max_tokens: int = 2000
 
     @abstractmethod
     def build_prompt(

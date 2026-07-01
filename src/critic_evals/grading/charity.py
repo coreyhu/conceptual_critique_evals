@@ -58,7 +58,6 @@ CRITIQUE:
 @dataclass(frozen=True, slots=True)
 class CharityGrader(LLMGrader):
     name: str = "charity"
-    max_tokens: int = 900
 
     def build_prompt(
         self, *, argument: str, reference: Reference, critique: str

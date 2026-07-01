@@ -44,7 +44,6 @@ CRITIQUE:
 @dataclass(frozen=True, slots=True)
 class FidelityGrader(LLMGrader):
     name: str = "fidelity"
-    max_tokens: int = 1000
 
     def build_prompt(
         self, *, argument: str, reference: Reference, critique: str

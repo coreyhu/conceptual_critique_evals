@@ -52,7 +52,6 @@ CRITIQUE:
 @dataclass(frozen=True, slots=True)
 class CalibrationGrader(LLMGrader):
     name: str = "calibration"
-    max_tokens: int = 1000
 
     def build_prompt(
         self, *, argument: str, reference: Reference, critique: str

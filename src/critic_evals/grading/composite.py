@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 
 from critic_evals.grading.calibration import CalibrationGrader
 from critic_evals.grading.centrality import CentralityGrader
@@ -35,29 +36,28 @@ class CompositeGrader(BaseGrader):
         reference: Reference,
         critique: str,
     ) -> GraderScore:
-        async def axis(g: BaseGrader) -> GraderScore:
-            return await g.grade(
-                client,
-                model_id=model_id,
-                argument=argument,
-                reference=reference,
-                critique=critique,
-            )
-
-        async def passthrough() -> GraderScore:
-            return GraderScore(
-                score=1.0,
-                dimensions={},
-                raw={"skipped": "no strongest_reading in reference"},
-            )
-
         has_strongest = bool(reference.get("strongest_reading"))
-        cha_t = axis(_CHARITY) if has_strongest else passthrough()
 
         if str(reference.get("soundness")) == "sound":
-            fid_g, cha_g, cal_g = await asyncio.gather(
-                axis(_FIDELITY), cha_t, axis(_CALIBRATION)
-            )
+            if has_strongest:
+                fid_g, cha_g, cal_g = await _grade_axes(
+                    (_FIDELITY, _CHARITY, _CALIBRATION),
+                    client,
+                    model_id,
+                    argument,
+                    reference,
+                    critique,
+                )
+            else:
+                fid_g, cal_g = await _grade_axes(
+                    (_FIDELITY, _CALIBRATION),
+                    client,
+                    model_id,
+                    argument,
+                    reference,
+                    critique,
+                )
+                cha_g = _skipped_charity_score()
             fid, cha, cal = fid_g.score, cha_g.score, cal_g.score
             core, dims = cal, {"calibration": cal}
             raw: dict[str, object] = {
@@ -66,13 +66,25 @@ class CompositeGrader(BaseGrader):
                 "calibration": cal_g.raw,
             }
         else:
-            fid_g, cha_g, decis_g, deriv_g, cen_g = await asyncio.gather(
-                axis(_FIDELITY),
-                cha_t,
-                axis(_DECISIVENESS),
-                axis(_DERIVATION),
-                axis(_CENTRALITY),
-            )
+            if has_strongest:
+                fid_g, cha_g, decis_g, deriv_g, cen_g = await _grade_axes(
+                    (_FIDELITY, _CHARITY, _DECISIVENESS, _DERIVATION, _CENTRALITY),
+                    client,
+                    model_id,
+                    argument,
+                    reference,
+                    critique,
+                )
+            else:
+                fid_g, decis_g, deriv_g, cen_g = await _grade_axes(
+                    (_FIDELITY, _DECISIVENESS, _DERIVATION, _CENTRALITY),
+                    client,
+                    model_id,
+                    argument,
+                    reference,
+                    critique,
+                )
+                cha_g = _skipped_charity_score()
             fid, cha = fid_g.score, cha_g.score
             decis, deriv, cen = decis_g.score, deriv_g.score, cen_g.score
             core = (
@@ -93,3 +105,35 @@ class CompositeGrader(BaseGrader):
             dimensions={"fidelity": fid, "charity": cha, "core": core, **dims},
             raw=raw,
         )
+
+
+async def _grade_axes(
+    graders: Sequence[BaseGrader],
+    client: AnthropicClient,
+    model_id: str,
+    argument: str,
+    reference: Reference,
+    critique: str,
+) -> tuple[GraderScore, ...]:
+    return tuple(
+        await asyncio.gather(
+            *(
+                grader.grade(
+                    client,
+                    model_id=model_id,
+                    argument=argument,
+                    reference=reference,
+                    critique=critique,
+                )
+                for grader in graders
+            )
+        )
+    )
+
+
+def _skipped_charity_score() -> GraderScore:
+    return GraderScore(
+        score=1.0,
+        dimensions={},
+        raw={"skipped": "no strongest_reading in reference"},
+    )

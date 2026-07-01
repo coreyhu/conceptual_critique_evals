@@ -56,7 +56,6 @@ CRITIQUE:
 @dataclass(frozen=True, slots=True)
 class DecisivenessGrader(LLMGrader):
     name: str = "decisiveness"
-    max_tokens: int = 1000
 
     def build_prompt(
         self, *, argument: str, reference: Reference, critique: str
