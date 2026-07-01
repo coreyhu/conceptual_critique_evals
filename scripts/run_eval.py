@@ -19,11 +19,11 @@ from critic_evals.eval import (
     DEFAULT_GRADER_MODEL,
     EvalConfig,
     evaluate,
-    write_eval_jsonl,
 )
 from critic_evals.grading.registry import GRADERS
 from critic_evals.llm.client import AnthropicClient
 from critic_evals.llm.models import DEFAULT_MODELS
+from critic_evals.transcripts import write_eval_jsonl
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,7 +33,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
     p.add_argument("--grader", default=DEFAULT_GRADER, choices=GRADERS)
     p.add_argument("--grader-model", default=DEFAULT_GRADER_MODEL)
-    p.add_argument("--no-key", action="store_true", help="grade key-free (RL-style)")
     p.add_argument(
         "--concurrency",
         type=int,
@@ -50,10 +49,7 @@ async def main(argv: list[str] | None = None) -> int:
     out_dir = ROOT / "transcripts" / "eval"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    print(
-        f"grader={args.grader} (verifier {args.grader_model}), "
-        f"key={'off' if args.no_key else 'on'}\n"
-    )
+    print(f"grader={args.grader} (verifier {args.grader_model})\n")
     print(f"{'model':<12}{'score':>8}   per-item")
     async with AnthropicClient() as client:
         for model in args.models:
@@ -61,7 +57,6 @@ async def main(argv: list[str] | None = None) -> int:
                 model_label=model,
                 grader=args.grader,
                 grader_model_id=args.grader_model,
-                use_key=not args.no_key,
             )
             result, records = await evaluate(
                 config, client=client, concurrency=args.concurrency
@@ -77,4 +72,4 @@ async def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    asyncio.run(main())

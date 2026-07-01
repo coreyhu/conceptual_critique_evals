@@ -6,7 +6,7 @@ from scripts.build_dataset import parse_args
 def test_parse_args_defaults():
     ns = parse_args([])
     assert ns.samples == 3
-    assert ns.out.endswith("critiques.jsonl")
+    assert ns.out.endswith("eval_dataset.jsonl")
 
 
 def test_parse_args_overrides():

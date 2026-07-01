@@ -1,10 +1,8 @@
-"""The evaluation itself: `LLM -> [0,1]` scoring how well a model critiques arguments.
+"""The evaluation scoring how well a model critiques arguments.
 
-`evaluate(config)` grades `config.model_label`'s frozen critiques (from the committed
-critique fixture, `critic_evals.dataset`) with the chosen grader and aggregates to a
-single score in [0,1]. It also returns per-critique transcript records (prompt +
-response + grade + metadata), and `write_eval_jsonl` serializes the config as a header
-line ahead of those records so a trajectory file fully describes the run that produced it.
+`evaluate(config)` grades `config.model_label`'s frozen dataset rows with the chosen
+grader and aggregates to a single score in [0,1]. It also returns per-critique
+transcript records (prompt + response + grade + metadata).
 
 Aggregation: case score = mean over the model's graded critiques for that case; overall =
 mean over cases. The case is the unit; multiple critiques per case reduce per-critique
@@ -14,23 +12,14 @@ noise but each case counts once.
 from __future__ import annotations
 
 import asyncio
-import json
-from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 
-from critic_evals.dataset import (
-    DatasetItem,
-    get_critiques,
-    get_items,
-    load_item_argument,
-)
+from critic_evals.dataset import EvalDatasetRow, load_eval_dataset
 from critic_evals.grading.grader import BaseGrader
-from critic_evals.grading.preprocess import load_reference
 from critic_evals.grading.registry import get_grader
 from critic_evals.llm.client import AnthropicClient
-from critic_evals.schema import CritiqueRecord
+from critic_evals.references import load_reference
 
 DEFAULT_GRADER = "composite"
 DEFAULT_GRADER_MODEL = (
@@ -51,7 +40,6 @@ class EvalConfig:
     grader: str = DEFAULT_GRADER
     grader_model_id: str = DEFAULT_GRADER_MODEL
     k_grade: int = 1
-    use_key: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -64,13 +52,11 @@ class EvalRecord:
     model: str
     model_id: str
     item_id: str
-    soundness: str
     sample: int
     critique_prompt: str
     critique: str
     grader: str
     grader_model_id: str
-    used_key: bool
     score: float
     dimensions: dict[str, float]
     grader_raw: dict[str, object]
@@ -101,18 +87,15 @@ def _utcnow_iso() -> str:
 
 
 async def _grade_critique(
-    crit: CritiqueRecord,
+    row: EvalDatasetRow,
     *,
-    items_by_id: dict[str, DatasetItem],
     grader_impl: BaseGrader,
     config: EvalConfig,
     client: AnthropicClient,
     semaphore: asyncio.Semaphore,
 ) -> EvalRecord:
-    item = items_by_id[crit.item_id]
-    arg_item = load_item_argument(item)
-    argument = f"{arg_item.question}\n\n{arg_item.argument}"
-    reference = load_reference(item.id) if config.use_key else {}
+    argument = f"{row.question}\n\n{row.argument}"
+    reference = load_reference(row.item_id)
     async with semaphore:
         scores, dims_runs, raws = [], [], []
         for _ in range(config.k_grade):
@@ -121,28 +104,26 @@ async def _grade_critique(
                 model_id=config.grader_model_id,
                 argument=argument,
                 reference=reference,
-                critique=crit.response,
+                critique=row.critique,
             )
             scores.append(gs.score)
             if gs.dimensions:
                 dims_runs.append(gs.dimensions)
             raws.append(gs.raw)
     return EvalRecord(
-        model=crit.model,
-        model_id=crit.model_id,
-        item_id=crit.item_id,
-        soundness=item.soundness,
-        sample=crit.sample,
-        critique_prompt=crit.prompt,
-        critique=crit.response,
+        model=row.model,
+        model_id=row.model_id,
+        item_id=row.item_id,
+        sample=row.sample,
+        critique_prompt=row.critique_prompt,
+        critique=row.critique,
         grader=config.grader,
         grader_model_id=config.grader_model_id,
-        used_key=config.use_key,
         score=sum(scores) / len(scores),
         dimensions=_average_dimensions(dims_runs),
         grader_raw=raws[-1],
-        input_tokens=crit.usage.input_tokens if crit.usage else 0,
-        output_tokens=crit.usage.output_tokens if crit.usage else 0,
+        input_tokens=row.usage.input_tokens if row.usage else 0,
+        output_tokens=row.usage.output_tokens if row.usage else 0,
         timestamp=_utcnow_iso(),
     )
 
@@ -160,8 +141,7 @@ async def evaluate(
     client: AnthropicClient | None = None,
 ) -> tuple[EvalResult, list[EvalRecord]]:
     """Grade `config.model_label`'s frozen critiques; return score in [0,1] + records."""
-    critiques = get_critiques(config.model_label)
-    items_by_id = {item.id: item for item in get_items()}
+    eval_inputs = load_eval_dataset(model_label=config.model_label)
     grader_impl = get_grader(config.grader)
     owns_client = client is None
     client = client or AnthropicClient()
@@ -170,14 +150,13 @@ async def evaluate(
     records = await asyncio.gather(
         *(
             _grade_critique(
-                c,
-                items_by_id=items_by_id,
+                eval_input,
                 grader_impl=grader_impl,
                 config=config,
                 client=client,
                 semaphore=sem,
             )
-            for c in critiques
+            for eval_input in eval_inputs
         )
     )
 
@@ -197,58 +176,3 @@ async def evaluate(
     if owns_client:
         await client.aclose()
     return EvalResult(config=config, score=overall, items=item_results), list(records)
-
-
-async def score_model(
-    config: EvalConfig, *, client: AnthropicClient | None = None
-) -> float:
-    """The bare `LLM -> [0,1]` signature: a config in, a scalar out."""
-    result, _ = await evaluate(config, client=client)
-    return result.score
-
-
-def write_eval_jsonl(
-    records: Iterable[EvalRecord], path: str | Path, *, config: EvalConfig
-) -> Path:
-    """Write the trajectory: a config header line, then one EvalRecord per line.
-
-    The header carries `kind: config` so it survives files being concatenated —
-    a reader picks configs and records apart by that tag, not by line position.
-    """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        fh.write(
-            json.dumps({"kind": "config", **config.to_dict()}, ensure_ascii=False)
-            + "\n"
-        )
-        for record in records:
-            fh.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
-    return path
-
-
-def read_eval_jsonl(path: str | Path) -> tuple[EvalConfig, list[EvalRecord]]:
-    """Read one trajectory back into its config and records — the inverse of the writer.
-
-    A trajectory describes exactly one run: exactly one `kind: config` header, then its
-    records. Zero headers or more than one means the file is malformed for this contract
-    (e.g. two runs merged), so raise rather than guess which config the records belong to.
-    """
-    path = Path(path)
-    config: EvalConfig | None = None
-    records: list[EvalRecord] = []
-    with path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            obj = json.loads(line)
-            if obj.pop("kind", None) == "config":
-                if config is not None:
-                    raise ValueError(f"{path}: multiple config headers (merged runs?)")
-                config = EvalConfig(**obj)
-            else:
-                records.append(EvalRecord(**obj))
-    if config is None:
-        raise ValueError(f"{path}: no config header (kind=config) found")
-    return config, records

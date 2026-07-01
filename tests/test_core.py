@@ -9,14 +9,20 @@ from pathlib import Path
 
 import pytest
 
-from critic_evals.critique import build_prompt
 from critic_evals.grading.derivation import DerivationGrader
 from critic_evals.grading.fidelity import FidelityGrader
 from critic_evals.grading.grader import level_score
 from critic_evals.grading.centrality import CentralityGrader
 from critic_evals.llm.models import MODELS, resolve
-from critic_evals.schema import ArgumentItem, CritiqueRecord, Usage
-from critic_evals.transcripts import parse_argument, read_jsonl, write_jsonl
+from critic_evals.schema import ArgumentItem, Usage
+from scripts.build_dataset import (
+    SOURCE_ITEMS,
+    SourceItem,
+    build_eval_dataset,
+    build_prompt,
+    parse_argument,
+    select_source_items,
+)
 
 SAMPLE_MD = """# Why do estimates overrun?
 
@@ -72,43 +78,6 @@ def test_resolve_unknown_label_raises():
         resolve(["opus-4.8", "nope"])
 
 
-def test_jsonl_roundtrip_preserves_records(tmp_path):
-    records = [
-        CritiqueRecord(
-            item_id="estimates",
-            model="opus-4.8",
-            model_id="claude-opus-4-8",
-            sample=0,
-            system="sys",
-            prompt="prompt",
-            response="a critique",
-            success=True,
-            stop_reason="end_turn",
-            usage=Usage(input_tokens=120, output_tokens=300),
-            request_id="req_abc",
-            timestamp="2026-06-30T00:00:00+00:00",
-        ),
-        CritiqueRecord(
-            item_id="estimates",
-            model="haiku-4.5",
-            model_id="claude-haiku-4-5",
-            sample=1,
-            system="sys",
-            prompt="prompt",
-            response="",
-            success=False,
-            stop_reason="error",
-            usage=None,
-            request_id=None,
-            timestamp="2026-06-30T00:00:01+00:00",
-            error="boom",
-        ),
-    ]
-    path = write_jsonl(records, tmp_path / "t.jsonl")
-    loaded = read_jsonl(path)
-    assert loaded == records  # frozen dataclasses compare by value
-
-
 def _sample_eval_record(sample: int = 0):
     from critic_evals.eval import EvalRecord
 
@@ -116,13 +85,11 @@ def _sample_eval_record(sample: int = 0):
         model="opus-4.8",
         model_id="claude-opus-4-8",
         item_id="estimates",
-        soundness="unsound",
         sample=sample,
         critique_prompt="p",
         critique="c",
         grader="composite",
         grader_model_id="claude-opus-4-8",
-        used_key=True,
         score=0.5,
         dimensions={"centrality": 1.0},
         grader_raw={"level": 2},
@@ -142,8 +109,7 @@ def test_grader_registry_resolves_names_and_rejects_unknown():
         "charity",
         "centrality",
         "derivation",
-        "decisiveness",
-        "calibration",
+        "proportionality",
     }
     assert isinstance(get_grader("composite"), CompositeGrader)
     assert isinstance(get_grader("centrality"), CentralityGrader)
@@ -152,20 +118,21 @@ def test_grader_registry_resolves_names_and_rejects_unknown():
         get_grader("does-not-exist")
 
 
-def test_get_items_selects_by_id_in_requested_order_and_rejects_unknown():
-    from critic_evals.dataset import ITEMS, get_items
-
-    assert get_items() == ITEMS  # None -> whole dataset in declared order
-    picked = get_items(["cancer_screening", "organization_metrics"])
+def test_select_source_items_selects_by_id_in_requested_order_and_rejects_unknown():
+    assert select_source_items() == SOURCE_ITEMS
+    picked = select_source_items(["cancer_screening", "organization_metrics"])
     assert [it.id for it in picked] == ["cancer_screening", "organization_metrics"]
-    # a one-shot generator is materialized, not exhausted before the lookup
-    assert get_items(i for i in ["cancer_screening"])[0].id == "cancer_screening"
+    assert (
+        select_source_items(i for i in ["cancer_screening"])[0].id
+        == "cancer_screening"
+    )
     with pytest.raises(ValueError):
-        get_items(["cancer_screening", "nope"])
+        select_source_items(["cancer_screening", "nope"])
 
 
 def test_eval_jsonl_writes_config_header(tmp_path):
-    from critic_evals.eval import EvalConfig, write_eval_jsonl
+    from critic_evals.eval import EvalConfig
+    from critic_evals.transcripts import write_eval_jsonl
 
     config = EvalConfig(model_label="opus-4.8", k_grade=1)
     path = write_eval_jsonl(
@@ -188,7 +155,8 @@ def test_eval_jsonl_writes_config_header(tmp_path):
 
 
 def test_eval_jsonl_roundtrip_recovers_config_and_records(tmp_path):
-    from critic_evals.eval import EvalConfig, read_eval_jsonl, write_eval_jsonl
+    from critic_evals.eval import EvalConfig
+    from critic_evals.transcripts import read_eval_jsonl, write_eval_jsonl
 
     config = EvalConfig(model_label="opus-4.8", k_grade=2)
     records = [_sample_eval_record(0), _sample_eval_record(1)]
@@ -200,7 +168,8 @@ def test_eval_jsonl_roundtrip_recovers_config_and_records(tmp_path):
 
 
 def test_read_eval_jsonl_rejects_missing_and_duplicate_headers(tmp_path):
-    from critic_evals.eval import EvalConfig, read_eval_jsonl, write_eval_jsonl
+    from critic_evals.eval import EvalConfig
+    from critic_evals.transcripts import read_eval_jsonl, write_eval_jsonl
 
     no_header = tmp_path / "no_header.jsonl"
     no_header.write_text(
@@ -261,16 +230,16 @@ def test_composite_preserves_axis_raw_outputs(monkeypatch):
 
     monkeypatch.setattr(comp, "_FIDELITY", DummyGrader("fidelity", 1.0))
     monkeypatch.setattr(comp, "_CHARITY", DummyGrader("charity", 1.0))
-    monkeypatch.setattr(comp, "_DECISIVENESS", DummyGrader("decisiveness", 1.0))
-    monkeypatch.setattr(comp, "_DERIVATION", DummyGrader("derivation", 0.5))
     monkeypatch.setattr(comp, "_CENTRALITY", DummyGrader("centrality", 0.5))
+    monkeypatch.setattr(comp, "_DERIVATION", DummyGrader("derivation", 0.5))
+    monkeypatch.setattr(comp, "_PROPORTIONALITY", DummyGrader("proportionality", 1.0))
 
     gs = asyncio.run(
         comp.CompositeGrader().grade(
             client=None,
             model_id="grader",
             argument="arg",
-            reference={"soundness": "flawed", "strongest_reading": "steelman"},
+            reference={"strongest_reading": "steelman"},
             critique="crit",
         )
     )
@@ -305,68 +274,62 @@ class _FakeClient:
 
 
 async def test_build_dataset_fans_out_arguments_models_samples():
-    from critic_evals.dataset import DatasetItem, build_critiques
+    item = SourceItem("x", Path("unused.txt"))
 
-    item = DatasetItem("x", Path("unused.txt"), "flawed")
-
-    async def fake_generate_critique(client, spec, arg, *, sample, max_tokens=4096):
-        return _critique_record(spec.label, arg.id, sample)
-
-    import critic_evals.dataset as dataset_mod
+    import scripts.build_dataset as dataset_builder
 
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
-        dataset_mod, "load_item_argument", lambda _: ArgumentItem("x", "Q", "A")
+        dataset_builder, "load_argument", lambda *_: ArgumentItem("x", "Q", "A")
     )
-    monkeypatch.setattr(dataset_mod, "generate_critique", fake_generate_critique)
     try:
-        records = await build_critiques(
+        rows = await build_eval_dataset(
             [item], ["opus-4.8"], samples=2, client=_FakeClient()
         )
     finally:
         monkeypatch.undo()
 
-    assert len(records) == 2
-    assert {r.sample for r in records} == {0, 1}
-    assert all(
-        r.item_id == "x" and r.model == "opus-4.8" and r.success for r in records
-    )
+    assert len(rows) == 2
+    assert {r.sample for r in rows} == {0, 1}
+    assert all(r.item_id == "x" and r.model == "opus-4.8" for r in rows)
+    assert rows[0].question == "Q"
+    assert rows[0].argument == "A"
+    assert rows[0].critique == "a critique"
 
 
 async def test_build_dataset_aborts_on_failure():
     import pytest as _pytest
 
-    from critic_evals.dataset import DatasetItem, build_critiques
+    item = SourceItem("x", Path("unused.txt"))
 
-    item = DatasetItem("x", Path("unused.txt"), "flawed")
-
-    import critic_evals.dataset as dataset_mod
+    import scripts.build_dataset as dataset_builder
 
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
-        dataset_mod, "load_item_argument", lambda _: ArgumentItem("x", "Q", "A")
+        dataset_builder, "load_argument", lambda *_: ArgumentItem("x", "Q", "A")
     )
     with _pytest.raises(RuntimeError):
         try:
-            await build_critiques(
+            await build_eval_dataset(
                 [item], ["opus-4.8"], samples=1, client=_FakeClient(fail=True)
             )
         finally:
             monkeypatch.undo()
 
 
-def _critique_record(model: str, item_id: str, sample: int):
-    from critic_evals.schema import CritiqueRecord, Usage
+def _dataset_row(model: str, item_id: str, sample: int):
+    from critic_evals.dataset import EvalDatasetRow
 
-    return CritiqueRecord(
+    return EvalDatasetRow(
+        id=f"{item_id}__{model}__sample_{sample}",
         item_id=item_id,
+        question="Q",
+        argument="A",
         model=model,
         model_id=f"claude-{model.replace('.', '-')}",
         sample=sample,
-        system="sys",
-        prompt="p",
-        response="a critique",
-        success=True,
+        critique_prompt="p",
+        critique="a critique",
         stop_reason="end_turn",
         usage=Usage(10, 20),
         request_id="req",
@@ -374,33 +337,30 @@ def _critique_record(model: str, item_id: str, sample: int):
     )
 
 
-def test_critiques_fixture_roundtrip_and_filter(tmp_path):
-    from critic_evals.dataset import get_critiques, load_critiques, write_critiques
-
-    records = [
-        _critique_record("opus-4.8", "cancer_screening", 0),
-        _critique_record("opus-4.8", "cancer_screening", 1),
-        _critique_record("haiku-4.5", "cancer_screening", 0),
-    ]
-    path = write_critiques(
-        records,
-        tmp_path / "critiques.jsonl",
-        models=["opus-4.8", "haiku-4.5"],
-        samples=2,
-        item_ids=["cancer_screening"],
-        built_at="2026-06-30T00:00:00+00:00",
+def test_eval_dataset_roundtrip_and_filter(tmp_path):
+    from critic_evals.dataset import (
+        load_eval_dataset,
+        write_eval_dataset,
     )
 
-    manifest, loaded = load_critiques(path)
-    assert manifest["models"] == ["opus-4.8", "haiku-4.5"]
-    assert manifest["samples"] == 2
-    assert loaded == tuple(records)  # frozen dataclasses compare by value
+    rows = [
+        _dataset_row("opus-4.8", "cancer_screening", 0),
+        _dataset_row("opus-4.8", "cancer_screening", 1),
+        _dataset_row("haiku-4.5", "cancer_screening", 0),
+    ]
+    path = write_eval_dataset(rows, tmp_path / "eval_dataset.jsonl")
 
-    picked = get_critiques("opus-4.8", path=path)
+    loaded = load_eval_dataset(path)
+    assert loaded == tuple(rows)
+
+    picked = load_eval_dataset(path, model_label="opus-4.8")
     assert len(picked) == 2 and all(r.model == "opus-4.8" for r in picked)
+    assert picked[0].question == "Q"
+    assert picked[0].argument == "A"
+    assert picked[0].critique == "a critique"
 
     with pytest.raises(ValueError):
-        get_critiques("not-a-model", path=path)
+        load_eval_dataset(path, model_label="not-a-model")
 
 
 async def test_evaluate_grades_frozen_critiques_without_calling_models(monkeypatch):
@@ -408,19 +368,22 @@ async def test_evaluate_grades_frozen_critiques_without_calling_models(monkeypat
     from critic_evals.eval import EvalConfig, evaluate
     from critic_evals.grading.grader import GraderScore
 
-    frozen = [
-        _critique_record("opus-4.8", "cancer_screening", 0),
-        _critique_record("opus-4.8", "cancer_screening", 1),
+    rows = [
+        _dataset_row("opus-4.8", "cancer_screening", 0),
+        _dataset_row("opus-4.8", "cancer_screening", 1),
     ]
 
     class _StubGrader:
         async def grade(self, client, *, model_id, argument, reference, critique):
             return GraderScore(score=0.5, dimensions={}, raw={})
 
-    monkeypatch.setattr(evalmod, "get_critiques", lambda label: tuple(frozen))
+    monkeypatch.setattr(
+        evalmod, "load_eval_dataset", lambda *, model_label: tuple(rows)
+    )
     monkeypatch.setattr(evalmod, "get_grader", lambda name: _StubGrader())
+    monkeypatch.setattr(evalmod, "load_reference", lambda item_id: {})
 
-    config = EvalConfig(model_label="opus-4.8", use_key=False)
+    config = EvalConfig(model_label="opus-4.8")
     result, records = await evaluate(config, client=object())
 
     assert len(records) == 2
