@@ -16,16 +16,13 @@ from critic_evals.llm.client import AnthropicClient
 from critic_evals.llm.models import ModelSpec
 from critic_evals.schema import ArgumentItem, CritiqueRecord, Usage
 
-CRITIQUE_SYSTEM = (
+CRITIQUE_SYSTEM_PROMPT = (
     "You are a careful, intellectually honest critic of arguments. "
     "Engage with the specific argument in front of you on its own terms."
 )
 
-# Named prompt variants. `natural` is the default; `bare` is a minimal control
-# for studying how sensitive the model's behavior is to framing. Add a variant
-# by adding a key — every template must accept {question} and {argument}.
 CRITIQUE_PROMPTS: dict[str, str] = {
-    "natural": (
+    "default": (
         "You will be given a question and an argument that attempts to answer it.\n\n"
         "Critique the argument. Assess how well it actually supports its conclusion. "
         "If it has weaknesses — unsupported leaps, internal tensions, overlooked "
@@ -35,24 +32,17 @@ CRITIQUE_PROMPTS: dict[str, str] = {
         "Question:\n{question}\n\n"
         "Argument:\n{argument}"
     ),
-    "bare": (
-        "Critique the following argument.\n\n"
-        "Question:\n{question}\n\n"
-        "Argument:\n{argument}"
-    ),
 }
 
-DEFAULT_VARIANT = "natural"
 
-
-def build_prompt(item: ArgumentItem, variant: str = DEFAULT_VARIANT) -> tuple[str, str]:
+def build_prompt(item: ArgumentItem, variant: str = "default") -> tuple[str, str]:
     """Return `(system, user_prompt)` for eliciting a critique of `item`."""
     try:
         template = CRITIQUE_PROMPTS[variant]
     except KeyError:
         known = ", ".join(CRITIQUE_PROMPTS)
         raise KeyError(f"unknown prompt variant {variant!r}; known: {known}") from None
-    return CRITIQUE_SYSTEM, template.format(
+    return CRITIQUE_SYSTEM_PROMPT, template.format(
         question=item.question, argument=item.argument
     )
 
@@ -66,7 +56,7 @@ async def create_critique(
     model: ModelSpec,
     item: ArgumentItem,
     *,
-    variant: str = DEFAULT_VARIANT,
+    variant: str = "default",
     sample: int = 0,
     max_tokens: int = 4096,
 ) -> CritiqueRecord:
