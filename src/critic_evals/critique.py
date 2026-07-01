@@ -34,6 +34,8 @@ CRITIQUE_PROMPTS: dict[str, str] = {
     ),
 }
 
+DEFAULT_VARIANT = "default"
+
 
 def build_prompt(item: ArgumentItem, variant: str = "default") -> tuple[str, str]:
     """Return `(system, user_prompt)` for eliciting a critique of `item`."""
@@ -71,7 +73,7 @@ async def create_critique(
     return CritiqueRecord(
         item_id=item.id,
         model=model.label,
-        model_id=model.model_id,
+        model_id=completion.model_id,
         prompt_variant=variant,
         sample=sample,
         system=system,
