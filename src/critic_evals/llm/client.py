@@ -31,7 +31,7 @@ class AnthropicClient:
         self,
         *,
         api_key: str | None = None,
-        max_retries: int = 4,
+        max_retries: int = 8,
         timeout: float = 120.0,
     ) -> None:
         self._client = AsyncAnthropic(

@@ -45,7 +45,6 @@ class CritiqueRow(TypedDict):
     item_id: str
     model: str
     model_id: str
-    prompt_variant: str
     sample: int
     system: str
     prompt: str
@@ -70,7 +69,6 @@ class CritiqueRecord:
     item_id: str
     model: str  # short label, e.g. "opus-4.8"
     model_id: str  # resolved Anthropic API id, e.g. "claude-opus-4-8"
-    prompt_variant: str
     sample: int
     system: str
     prompt: str
@@ -94,7 +92,6 @@ class CritiqueRecord:
             item_id=data["item_id"],
             model=data["model"],
             model_id=data["model_id"],
-            prompt_variant=data["prompt_variant"],
             sample=data["sample"],
             system=data["system"],
             prompt=data["prompt"],
