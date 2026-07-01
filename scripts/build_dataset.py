@@ -174,6 +174,12 @@ async def build_eval_dataset(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument(
+        "--items",
+        nargs="+",
+        default=None,
+        help="argument item ids to include; defaults to all source items",
+    )
     p.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
     p.add_argument("--samples", type=int, default=3)
     p.add_argument("--max-tokens", type=int, default=4096)
@@ -185,7 +191,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 async def main(argv: list[str] | None = None) -> int:
     load_dotenv(ROOT / ".env")
     args = parse_args(argv)
-    items = select_source_items()
+    items = select_source_items(args.items)
     print(
         f"building dataset: {len(items)} items x {args.models} x {args.samples} samples"
     )
