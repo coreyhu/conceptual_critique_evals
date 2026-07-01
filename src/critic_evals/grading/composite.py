@@ -1,18 +1,4 @@
-"""The critique grader: a composite of single-aspect judges (one per file in this package).
-
-Two GATES cap the score (keyed on the central claim, so a peripheral lapse never zeroes an
-otherwise-strong critique): Fidelity and Charity. Three GRADED axes score the critique only if the
-gates pass: Centrality (uses the gap-list as a guide), Derivation and Decisiveness (reference-free).
-Sound arguments take the Calibration path instead of the graded core.
-
-Aggregation (each axis returns its rubric level normalized to [0,1]):
-    core  = decisiveness x derivation x centrality   (flawed)   |   calibration   (sound)
-    SCORE = [fidelity>0] x [charity>0] x core        (a gate at level 0 caps the whole score)
-
-Only Centrality (gap-list guide) and Charity (strongest reading) read the reference, and only as
-a guide; the rest work from the argument + critique alone, so the eval degrades gracefully when
-the reference is thin (key-free / RL).
-"""
+"""Composite critique grader built from focused axis judges."""
 
 from __future__ import annotations
 
@@ -49,46 +35,61 @@ class CompositeGrader(BaseGrader):
         reference: Reference,
         critique: str,
     ) -> GraderScore:
-        async def axis(g: BaseGrader) -> float:
-            return (
-                await g.grade(
-                    client,
-                    model_id=model_id,
-                    argument=argument,
-                    reference=reference,
-                    critique=critique,
-                )
-            ).score
+        async def axis(g: BaseGrader) -> GraderScore:
+            return await g.grade(
+                client,
+                model_id=model_id,
+                argument=argument,
+                reference=reference,
+                critique=critique,
+            )
 
-        async def passthrough() -> (
-            float
-        ):  # a skipped axis: gate passes / recall is neutral
-            return 1.0
+        async def passthrough() -> GraderScore:
+            return GraderScore(
+                score=1.0,
+                dimensions={},
+                raw={"skipped": "no strongest_reading in reference"},
+            )
 
         has_strongest = bool(reference.get("strongest_reading"))
         cha_t = axis(_CHARITY) if has_strongest else passthrough()
 
         if str(reference.get("soundness")) == "sound":
-            fid, cha, cal = await asyncio.gather(
+            fid_g, cha_g, cal_g = await asyncio.gather(
                 axis(_FIDELITY), cha_t, axis(_CALIBRATION)
             )
+            fid, cha, cal = fid_g.score, cha_g.score, cal_g.score
             core, dims = cal, {"calibration": cal}
+            raw = {
+                "fidelity": fid_g.raw,
+                "charity": cha_g.raw,
+                "calibration": cal_g.raw,
+            }
         else:
-            fid, cha, decis, deriv, cen = await asyncio.gather(
+            fid_g, cha_g, decis_g, deriv_g, cen_g = await asyncio.gather(
                 axis(_FIDELITY),
                 cha_t,
                 axis(_DECISIVENESS),
                 axis(_DERIVATION),
                 axis(_CENTRALITY),
             )
+            fid, cha = fid_g.score, cha_g.score
+            decis, deriv, cen = decis_g.score, deriv_g.score, cen_g.score
             core = (
-                decis * deriv * cen
-            )  # quality (decisiveness x derivation) x centrality
+                decis + deriv + cen
+            ) / 3  # mean: a baseline axis costs points, never zeroes
             dims = {"decisiveness": decis, "derivation": deriv, "centrality": cen}
+            raw = {
+                "fidelity": fid_g.raw,
+                "charity": cha_g.raw,
+                "decisiveness": decis_g.raw,
+                "derivation": deriv_g.raw,
+                "centrality": cen_g.raw,
+            }
 
         gate = (1.0 if fid > 0 else 0.0) * (1.0 if cha > 0 else 0.0)
         return GraderScore(
             score=gate * core,
             dimensions={"fidelity": fid, "charity": cha, "core": core, **dims},
-            raw={},
+            raw=raw,
         )

@@ -1,19 +1,4 @@
-"""Centrality — a graded axis. Is the critique's primary finding a load-bearing flaw?
-
-The floor a critique must clear: did it attack a flaw that is central to the argument's
-conclusion, rather than a peripheral technicality? This replaces coverage-style recall, which
-wrongly punishes depth — a critique that goes narrow-and-deep on the single most serious flaw, or
-exposes one *more* serious than the reference lists, is excellent and must not lose to a shallow
-critique that touches more flaws. The reference's load-bearing gaps are a GUIDE for what counts as
-central, not a checklist: a flaw deeper than the list still scores 2, and missing lesser gaps is
-never penalized. Reference-light (uses the gap list only to calibrate 'central').
-
-Levels (normalized level/2):
-  0 — the primary finding is a peripheral technicality or nitpick; not load-bearing.
-  1 — a real, relevant flaw, but not the most load-bearing one.
-  2 — a genuinely load-bearing flaw central to the conclusion (a listed gap, or a more serious
-      flaw the list missed).
-"""
+"""Centrality axis: does the critique target the argument's dominant bottleneck?"""
 
 from __future__ import annotations
 
@@ -24,26 +9,40 @@ from critic_evals.grading.grader import LLMGrader, Reference, level_score
 _SCHEMA: dict[str, object] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["level", "evidence"],
+    "required": ["level", "evidence", "why_not_higher"],
     "properties": {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 the primary finding is peripheral / a nitpick / not load-bearing / 1 a real relevant flaw but not the most load-bearing / 2 a genuinely load-bearing flaw central to the conclusion (a listed gap, OR a more serious flaw the list missed)",
+            "description": "0 peripheral or relevant-but-not-central / 1 load-bearing flaw but not shown to dominate / 2 dominant bottleneck that the conclusion most depends on",
         },
         "evidence": {
             "type": "string",
             "description": "the critique's primary finding and why it is (or isn't) central to the conclusion",
         },
+        "why_not_higher": {
+            "type": "string",
+            "description": "if not level 2, explain the missing condition; if level 2, say why the dominant-bottleneck test is met",
+        },
     },
 }
 
-_PROMPT = """CENTRALITY. Rate whether the critique's PRIMARY finding targets a genuinely LOAD-BEARING flaw — one central to the argument's conclusion. As a GUIDE, the argument's known load-bearing gaps are:
+_PROMPT = """CENTRALITY. Focus on the critique's most load-bearing objection — its primary line of attack (the same one the other axes judge); if the critique makes several points, evaluate the one it treats as most important. Rate how LOAD-BEARING that objection is — how close to what the conclusion rests on. As a GUIDE, the argument's known load-bearing gaps are:
 {key}
-A critique may also expose a flaw MORE serious than these — credit that too; do NOT require it to match the list, and do NOT penalize it for missing lesser gaps.
-- 0: the primary finding is a peripheral technicality or nitpick, not load-bearing.
-- 1: a real, relevant flaw, but not the most load-bearing one.
-- 2: a genuinely load-bearing flaw central to the conclusion (a listed gap, or a more serious flaw the list missed).
+A critique may expose a flaw MORE serious than these — credit that too; do NOT require it to match the list. But do not award the top level just for naming a listed gap. Top centrality requires correct weighting: the critique must show why this objection is the dominant bottleneck, not merely one valid concern.
+- 0: miss — peripheral, merely relevant, or not what the conclusion rests on.
+- 1: good — a genuinely load-bearing flaw central to the conclusion, but the critique does not show it is the dominant bottleneck or ranks it alongside weaker points.
+- 2: excellent — the dominant bottleneck: the critique identifies the objection the conclusion most depends on, correctly ranks it, and explains why easier objections are subordinate or merely coordinate.
+
+COMMON FALSE TOP-SCORES:
+- A critique names a listed load-bearing gap, but does not show why that gap is the bottleneck rather than one important concern among several. Score 1, not 2.
+- A critique lists many serious flaws. Breadth does not imply top centrality unless it ranks the main flaw and explains why the rest are subordinate.
+- A critique uses broad language like "the core issue" or "the real problem" but never justifies the weighting. Do not infer dominance from confident wording.
+
+EXAMPLES — a rising ladder of critiques of the unrelated argument "Downtown shops are losing customers because the suburban mall offers free parking and downtown charges for it; so make downtown parking free and shoppers return":
+- 0 (miss): "The argument never gives figures for the customer loss or tax revenue." (real observations, but not the assumption the conclusion stands on)
+- 1 (good): "The whole case assumes the parking fee — not the mall's selection, anchor stores, or comfort — is what drives shoppers away." (load-bearing, but still just names the missing alternative causes)
+- 2 (excellent): "The conclusion works only if parking is the binding constraint. Tax costs, exact fee size, and implementation details are secondary; if selection or comfort dominate shopper choice, free parking does not recover the trend at all. So causal identification of the binding constraint is the bottleneck the whole remedy rests on." (central and correctly weighted)
 
 ARGUMENT:
 {argument}

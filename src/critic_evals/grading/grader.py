@@ -1,11 +1,4 @@
-"""The grading base: `BaseGrader` (the interface), `LLMGrader` (a single-aspect judge), `GraderScore`.
-
-Every grader — each single-aspect axis and the composite that combines them — is a `BaseGrader`
-with the same `grade(...)` contract. `LLMGrader` implements it as one focused LLM call (the axes
-in fidelity/charity/centrality/derivation/decisiveness/calibration subclass it); `CompositeGrader`
-implements it by orchestrating the axes. All read a structured `reference` dict (soundness,
-strongest_reading, load_bearing_gaps); axes that are reference-free ignore it.
-"""
+"""Base interfaces for axis and composite graders."""
 
 from __future__ import annotations
 

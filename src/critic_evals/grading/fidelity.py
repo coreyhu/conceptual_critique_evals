@@ -1,17 +1,4 @@
-"""Fidelity — a gate. The critique's central objection must fairly represent the argument.
-
-A gate because a false central target disqualifies a critique regardless of its other merits, and
-it fails in two mirror directions: claiming what the text does NOT say (fabrication) and ignoring
-what the text DOES say (attacking an objection the argument already pre-empts via a qualifier or
-concession — a false flaw). Over-stating the *severity* of a REAL flaw is not a fidelity failure
-(decisiveness grades that). Reads the argument + the reference's concessions (the pre-empted list).
-
-Levels (normalized level/2 → the composite caps the whole score at level 0):
-  0 — the central objection FABRICATES (a quote/contradiction not in the text) OR attacks a point
-      the argument already PRE-EMPTS (a false flaw).
-  1 — the central objection holds, but a PERIPHERAL claim fabricates or attacks a pre-empted point.
-  2 — fully faithful: every attribution is accurate to the text and none is already pre-empted.
-"""
+"""Fidelity gate: does the critique fabricate what the argument says?"""
 
 from __future__ import annotations
 
@@ -27,21 +14,25 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 central objection is fabricated (quote/contradiction not in the text) OR attacks a point the argument pre-empts (a false flaw) / 1 central holds but a peripheral claim fabricates or attacks a pre-empted point / 2 fully faithful and none pre-empted",
+            "description": "0 central objection fabricated (a quote/contradiction not in the text) / 1 central faithful but a peripheral claim misquotes or manufactures / 2 fully faithful (a fair paraphrase/inference counts), or the critique endorses (no objection)",
         },
         "evidence": {
             "type": "string",
-            "description": "the critique's central attribution, and whether the text supports it and has not already pre-empted it",
+            "description": "the critique's central attribution and whether the text supports it",
         },
     },
 }
 
-_PROMPT = """FIDELITY. Rate whether the critique's CENTRAL objection fairly represents the ARGUMENT — it must neither fabricate nor attack a point the argument already pre-empts. The argument's own concessions / qualifiers (objections it PRE-EMPTS) are:
-{concessions}
-- 0: the central objection FAILS on either count — it is FABRICATED (a quote/contradiction not in the text) OR it attacks a point the argument already PRE-EMPTS via one of the qualifiers above (a false flaw).
-- 1: the central objection holds and is not pre-empted, but a PERIPHERAL claim fabricates or attacks a pre-empted point.
-- 2: fully faithful — every attribution is accurate to the text and none is already pre-empted.
-A REAL, un-pre-empted flaw whose severity is over-stated still scores 2 on fidelity (severity is graded elsewhere); only FABRICATION or attacking a PRE-EMPTED point scores 0.
+_PROMPT = """FIDELITY. Rate whether the critique's CENTRAL objection is FABRICATED. Distinguish a fair characterization or inference about what the argument says (faithful) from citing something the text does not contain.
+- 0: the central objection FABRICATES — it cites a quote, or a contradiction/tension, that the text does NOT actually contain.
+- 1: the central objection is faithful, but a PERIPHERAL claim misquotes or manufactures.
+- 2: fully faithful — every attribution is accurate to the text (a fair paraphrase or inference about the argument's own reasoning counts as faithful); OR the critique makes no objection (it endorses), so there is nothing to fabricate.
+A REAL flaw whose severity is over-stated still scores 2 (severity is graded elsewhere); only FABRICATION of the central target scores 0.
+
+EXAMPLES — for the unrelated argument "Downtown shops are losing customers because the suburban mall offers free parking and downtown charges for it; so make downtown parking free and shoppers return" (a gate: 0 disqualifies):
+- 0 (fabricated): "The argument insists parking is the ONLY reason downtown struggles and dismisses online shopping outright." (both attributions are invented — the text says neither)
+- 1 (peripheral slip): the central objection faithfully targets the single-cause leap, but tacks on "it even concedes the fee is trivially small" — a detail the text never states.
+- 2 (faithful): "The argument treats the parking fee as the sole cause of the customer loss, when the mall differs in many other ways." (an accurate paraphrase of what the argument actually assumes) — or the critique simply endorses, so there is nothing to fabricate.
 
 ARGUMENT:
 {argument}
@@ -55,10 +46,10 @@ class FidelityGrader(LLMGrader):
     name: str = "fidelity"
     max_tokens: int = 1000
 
-    def build_prompt(self, *, argument: str, reference: Reference, critique: str) -> str:
-        conc = reference.get("concessions", ())
-        listed = "\n".join(f"- {c}" for c in conc) if isinstance(conc, (list, tuple)) and conc else "(none listed)"
-        return _PROMPT.format(concessions=listed, argument=argument, critique=critique)
+    def build_prompt(
+        self, *, argument: str, reference: Reference, critique: str
+    ) -> str:
+        return _PROMPT.format(argument=argument, critique=critique)
 
     @property
     def schema(self) -> dict[str, object]:
