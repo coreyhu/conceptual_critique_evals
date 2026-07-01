@@ -9,7 +9,9 @@ from pathlib import Path
 
 from critic_evals.schema import Usage
 
-EVAL_DATASET_PATH = Path(__file__).resolve().parents[2] / "dataset" / "eval_dataset.jsonl"
+EVAL_DATASET_PATH = (
+    Path(__file__).resolve().parents[2] / "dataset" / "eval_dataset.jsonl"
+)
 
 
 @dataclass(frozen=True, slots=True)

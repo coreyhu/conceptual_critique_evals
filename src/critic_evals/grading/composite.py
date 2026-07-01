@@ -55,12 +55,20 @@ class CompositeGrader(BaseGrader):
         if has_strongest:
             fid_g, cha_g, cen_g, deriv_g, prop_g, syn_g = await _grade_axes(
                 (_FIDELITY, _CHARITY, *core_axes),
-                client, model_id, argument, reference, critique,
+                client,
+                model_id,
+                argument,
+                reference,
+                critique,
             )
         else:
             fid_g, cen_g, deriv_g, prop_g, syn_g = await _grade_axes(
                 (_FIDELITY, *core_axes),
-                client, model_id, argument, reference, critique,
+                client,
+                model_id,
+                argument,
+                reference,
+                critique,
             )
             cha_g = _skipped_charity_score()
 
