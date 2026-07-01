@@ -20,7 +20,7 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 engages a peripheral / merely-relevant element / 1 engages a genuinely load-bearing element but does not prove dominance or rank it against plausible alternatives / 2 engages the dominant element the conclusion most depends on, explains why it dominates plausible alternative critiques, and correctly subordinates lesser points",
+            "description": "0 engages a peripheral / merely-relevant element / 1 correctly identifies the dominant load-bearing element / 2 exceptional: chooses the revision-relevant fulcrum among plausible alternatives and explicitly rejects a nearby tempting but less central target",
         },
         "evidence": {
             "type": "string",
@@ -28,7 +28,7 @@ _SCHEMA: dict[str, object] = {
         },
         "why_not_higher": {
             "type": "string",
-            "description": "if not level 2, explain the missing condition; if level 2, say why this is the element the conclusion most depends on",
+            "description": "if not level 2, explain what judgment call is missing; if level 2, say how the critique's choice of target elevates the whole critique",
         },
     },
 }
@@ -41,23 +41,26 @@ As a GUIDE, the argument's known load-bearing gaps are:
 {key}
 (If none are listed, treat the argument as having no decisive flaw — credit the critique for engaging the central reasoning the conclusion stands on, NOT for manufacturing a gap.) A critique may engage an element MORE central than the list; credit that too. Do not award the top level just for naming a listed gap, or for generic praise — top centrality requires comparative weighting: the critique must show why this element is the one the conclusion most depends on, not just one important issue.
 - 0: miss — engages a peripheral or merely-relevant element, not what the conclusion rests on.
-- 1: good — engages a genuinely load-bearing element, but does not show it is the dominant one, or ranks it alongside lesser points without explaining the priority.
-- 2: excellent — engages the dominant element the conclusion most depends on (a decisive flaw, or the central reasoning of a sound argument), and explicitly or clearly implicitly explains why plausible other issues are secondary.
+- 1: solid — engages the dominant element the conclusion most depends on (a decisive flaw, or the central reasoning of a sound argument), and at least roughly weights it above lesser points. This is good ordinary critique.
+- 2: excellent — makes a centrality judgment that elevates the critique overall: it chooses the exact revision-relevant fulcrum among plausible alternatives, explicitly distinguishes it from at least one tempting-but-less-central critique, and shows how the rest of the critique should be organized around it. This should be rare.
 
 COMMON FALSE TOP-SCORES:
-- Names a listed gap (or, for a sound argument, merely restates the conclusion) without showing why it is the load-bearing element rather than one concern among several. Score 1.
+- Names a listed gap (or, for a sound argument, merely restates the conclusion) without showing why it is load-bearing. Score 1 at most.
 - Lists many points. Breadth does not imply centrality unless it ranks the main one and explains why the rest are subordinate.
 - Uses broad language ("the core issue", "the real problem") but never justifies the weighting. Do not infer dominance from confident wording.
-- Finds the right paragraph or topic but treats several objections as co-equal. Score 1 unless the critique makes a priority claim that would guide revision.
+- Finds and weights the right flaw but does not explicitly reject a nearby tempting target. Score 1, not 2.
+- Treats the dominant flaw as one item in a list, even if the item is correct. Score 1 unless the critique uses that judgment to reorganize the whole assessment.
+- Says other issues are "secondary" only in passing. Level 2 requires the critique to show WHY a plausible alternative target would lead revision in the wrong direction or would leave the main argument standing.
 
 EXAMPLES — a rising ladder of critiques of the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall":
 - 0 (miss): "It never gives figures for the customer loss or tax revenue." (real observations, but not what the conclusion stands on)
-- 1 (good): "The whole case assumes the parking fee — not selection or comfort — is what drives shoppers away." (load-bearing, but just names the missing alternatives)
-- 2 (excellent): "The conclusion works only if parking is the binding constraint; fee size and implementation are secondary — if selection or comfort dominate, free parking recovers nothing. Causal identification of the binding constraint is the bottleneck the whole remedy rests on." (central, correctly weighted)
+- 1 (solid): "The conclusion works only if parking is the binding constraint; fee size and implementation are secondary — if selection or comfort dominate, free parking recovers nothing. Causal identification of the binding constraint is the bottleneck the whole remedy rests on." (central, correctly weighted)
+- 2 (excellent): "The revision should not start with more parking data; it should first prove parking is the binding constraint rather than one friction among several. Otherwise the argument's best modest version ('parking matters at the margin') survives but its policy conclusion does not. Selection/comfort/prices are not separate objections — they are the live alternatives that make binding-constraint identification the fulcrum." (chooses and defends the revision-relevant center)
 
 EXAMPLES — on the unrelated SOUND argument "one smoker who lived to 95 doesn't refute that smoking lowers life-expectancy averages, which tolerate outliers":
 - 0 (miss): "It doesn't define 'life expectancy' precisely." (a peripheral aside, not what the conclusion rests on)
-- 2 (excellent): "The conclusion rests entirely on the distinction between a population-average claim and a single individual outcome — the critique engages exactly that load-bearing point, and correctly, since one outlier is precisely what an average absorbs." (engages the central reasoning the conclusion depends on)
+- 1 (solid): "The conclusion rests entirely on the distinction between a population-average claim and a single individual outcome — the critique engages exactly that load-bearing point, and correctly, since one outlier is precisely what an average absorbs." (engages the central reasoning the conclusion depends on)
+- 2 (excellent): "The critique correctly makes the average-vs-outlier distinction the fulcrum and also shows why tempting side objections — sample size, genetic immunity, or precise definition of 'life expectancy' — are secondary: none challenge the logical compatibility between a lower average and an individual outlier. That judgment tells the author what must be preserved in revision." (centrality judgment improves the critique)
 
 ARGUMENT:
 {argument}

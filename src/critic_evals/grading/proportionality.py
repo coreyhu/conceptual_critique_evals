@@ -12,11 +12,10 @@ Levels (normalized level/2):
   0 — miscalibrated: OVER-calls (manufactures a flaw in sound reasoning, or declares a minor/fixable
       flaw fatal) OR UNDER-calls (misses or downplays a genuinely decisive flaw, or rubber-stamps
       without engaging the reasoning).
-  1 — proportionate: the verdict matches the argument's actual merit — affirms what is sound, names
-      what is genuinely wrong at the right severity, and engages the reasoning.
-  2 — proportionate and illuminating: as (1), and it establishes the verdict rigorously (shows why a
-      fatal flaw truly defeats the conclusion, or why the argument survives a tempting objection)
-      and/or adds a real, proportionate boundary condition, limitation, or sharpening.
+  1 — proportionate: the verdict matches the argument's actual merit at ordinary critique quality.
+  2 — excellent judgment: the critique's severity call materially improves the critique by naming the
+      nearest plausible over-call or under-call, rejecting it, preserving the strongest surviving
+      claim, and explaining the exact boundary between fatal, fixable, partial, and sound.
 """
 
 from __future__ import annotations
@@ -41,11 +40,11 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 miscalibrated (over-calls a sound/fixable point as fatal, OR under-calls/misses a decisive flaw, OR rubber-stamps) / 1 proportionate (verdict matches the argument's actual merit, engages the reasoning) / 2 proportionate AND rigorously adjudicated (establishes why this severity follows, handles tempting over/under-calls, and adds a real boundary or sharpening)",
+            "description": "0 miscalibrated / 1 proportionate ordinary verdict / 2 excellent severity judgment that names and rejects the nearest tempting over/under-call, preserves the strongest surviving claim, and draws the revision-relevant boundary",
         },
         "why_not_higher": {
             "type": "string",
-            "description": "if not level 2, what holds it there — a miscalibration, or a proportionate-but-thin verdict that establishes nothing and adds no value",
+            "description": "if not level 2, what judgment call is missing; if level 2, explain how the severity judgment elevates the critique",
         },
     },
 }
@@ -56,21 +55,27 @@ STEP 1 — Judge the ARGUMENT on its own, from the text: is its central reasonin
 
 STEP 2 — Read the CRITIQUE's operative verdict and rate whether it FITS that merit:
 - 0: miscalibrated — it OVER-calls (manufactures a flaw in sound reasoning, or declares a minor/fixable flaw fatal) OR UNDER-calls (misses or downplays a genuinely decisive flaw, or rubber-stamps without engaging the reasoning).
-- 1: proportionate — the verdict matches the argument's actual merit: it affirms what is sound and names what is genuinely wrong, at the right severity, and engages the reasoning.
-- 2: proportionate and rigorously adjudicated — as level 1, and it ESTABLISHES why this severity follows rather than a weaker or stronger verdict (shows why a fatal flaw truly defeats the conclusion, why a fixable gap is not fatal, or why the argument survives a tempting objection) and adds a real, proportionate boundary condition, limitation, or sharpening.
+- 1: proportionate — the verdict matches the argument's actual merit: it affirms what is sound and names what is genuinely wrong, at the right severity, and engages the reasoning. This is good ordinary calibration.
+- 2: excellent judgment — the severity call elevates the critique. It ESTABLISHES why this verdict follows rather than a weaker or stronger one, explicitly names or clearly reconstructs the nearest tempting over-call or under-call, rejects that wrong severity call, preserves the strongest surviving version of the argument, and draws a revision-relevant boundary (fatal vs fixable, partial vs total, sound vs sound-with-caveat).
 
 Judge the ACTUAL fit, not the critique's confidence: a critique that merely SOUNDS decisive while over- or under-calling is a 0.
-Do not award level 2 merely for a correct verdict. A critique that says "mostly right but incomplete" or "flawed in this way" without adjudicating why that is the right severity is level 1.
+Do not award level 2 merely for a correct verdict, a fair caveat, a preserved weaker claim, or a good boundary condition in isolation. A critique that says "mostly right but incomplete" or "flawed in this way" without comparing that verdict to a nearby wrong severity call is level 1.
+
+COMMON FALSE TOP-SCORES:
+- The critique says "fatal to the conclusion but not the whole argument" without identifying the plausible weaker verdict it is rejecting. Score 1.
+- The critique preserves a modest surviving claim but never explains why the flaw is fatal rather than fixable, or fixable rather than fatal. Score 1.
+- The critique correctly endorses a sound argument and adds caveats, but does not explain why a tempting objection fails. Score 1.
+- The critique uses calibrated words ("partially", "mostly", "fatal", "fixable") without adjudicating the nearby boundary. Score 1.
 
 EXAMPLES — on the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall" (whose real flaw is assuming parking, not selection/comfort, is the binding cause):
 - 0: "This argument is worthless — it never even defines 'customer,' so the whole thing collapses." (over-calls a trivial gap as fatal) / "Seems reasonable to me." (under-calls — rubber-stamps a flawed argument)
 - 1: "Its real weakness is assuming parking is the decisive factor when the mall also wins on selection and comfort, so free parking may not recover the trend." (right flaw, right severity)
-- 2: "...and by the argument's OWN picture of a cost-comparison shopper, price and selection matter too, so parking is one factor among several — the remedy works only if parking is the binding constraint, which is never shown." (establishes the flaw from the argument's own commitments)
+- 2: "The modest claim that parking is one friction survives; the policy conclusion does not. The tempting under-call is 'parking matters, so the recommendation is probably fine'; the tempting over-call is 'parking is irrelevant.' Both are wrong. By the argument's OWN picture of a cost-comparison shopper, price and selection matter too, so the fix is not 'prove parking matters' but 'prove it is the binding constraint.' That is why the flaw is fatal to the recommendation but not to the narrower causal observation." (adjudicates exact severity against nearby wrong calls)
 
 EXAMPLES — on the unrelated SOUND argument "one smoker who lived to 95 doesn't refute that smoking lowers life-expectancy averages, which tolerate outliers":
 - 0: "This is flawed — it ignores that some people are genetically immune to smoking's harms." (manufactures a flaw in sound reasoning)
 - 1: "Correct — a single outlier can't refute a population-average claim; the argument rightly separates the individual from the distribution." (affirms sound reasoning and engages it)
-- 2: "Correct, and it can be sharpened: the anecdote would bite only if smoking made early death impossible, which no one claims — so the point generalizes to any statistic-vs-anecdote dispute." (affirms and adds real value)
+- 2: "Correct, and the tempting over-call is to say the anecdote shows the smoking-risk argument ignores individual variation. It does not: the anecdote would bite only against an impossibility claim, not an average-risk claim. So the argument is sound as stated while still leaving room for other evidence about the size of the average effect." (affirms soundness, rejects the tempting over-call, and draws the boundary)
 
 ARGUMENT:
 {argument}
