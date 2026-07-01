@@ -60,7 +60,7 @@ class CompositeGrader(BaseGrader):
             )
             fid, cha, cal = fid_g.score, cha_g.score, cal_g.score
             core, dims = cal, {"calibration": cal}
-            raw = {
+            raw: dict[str, object] = {
                 "fidelity": fid_g.raw,
                 "charity": cha_g.raw,
                 "calibration": cal_g.raw,
