@@ -7,6 +7,10 @@ from __future__ import annotations
 import pytest
 
 from critic_evals.critique import CRITIQUE_PROMPTS, build_prompt
+from critic_evals.grading.derivation import DerivationGrader
+from critic_evals.grading.fidelity import FidelityGrader
+from critic_evals.grading.grader import level_score
+from critic_evals.grading.centrality import CentralityGrader
 from critic_evals.llm.models import MODELS, resolve
 from critic_evals.schema import ArgumentItem, CritiqueRecord, Usage
 from critic_evals.transcripts import parse_argument, read_jsonl, write_jsonl
@@ -115,3 +119,20 @@ def test_jsonl_roundtrip_preserves_records(tmp_path):
     path = write_jsonl(records, tmp_path / "t.jsonl")
     loaded = read_jsonl(path)
     assert loaded == records  # frozen dataclasses compare by value
+
+
+def test_level_score_normalizes_and_clamps():
+    assert level_score({"level": 0}, 2) == 0.0
+    assert level_score({"level": 1}, 2) == 0.5
+    assert level_score({"level": 2}, 2) == 1.0
+    assert level_score({"level": 3}, 3) == 1.0  # a four-tier axis (derivation)
+    assert level_score({"level": 9}, 2) == 1.0  # clamps into range
+    assert level_score({}, 2) == 0.0  # missing -> 0
+
+
+def test_axis_graders_extract_their_rubric_level():
+    # each axis is one dimension: extract returns the normalized level as a float
+    assert FidelityGrader().extract({"level": 0}) == 0.0
+    assert CentralityGrader().extract({"level": 2}) == 1.0
+    assert CentralityGrader().extract({"level": 0}) == 0.0
+    assert DerivationGrader().extract({"level": 3}) == pytest.approx(1.0)  # a four-tier axis
