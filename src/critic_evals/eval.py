@@ -20,7 +20,13 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from critic_evals.dataset import get_critiques, get_items, load_item_argument
+from critic_evals.dataset import (
+    DatasetItem,
+    get_critiques,
+    get_items,
+    load_item_argument,
+)
+from critic_evals.grading.grader import BaseGrader
 from critic_evals.grading.preprocess import load_reference
 from critic_evals.grading.registry import get_grader
 from critic_evals.llm.client import AnthropicClient
@@ -94,6 +100,59 @@ def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+async def _grade_critique(
+    crit: CritiqueRecord,
+    *,
+    items_by_id: dict[str, DatasetItem],
+    grader_impl: BaseGrader,
+    config: EvalConfig,
+    client: AnthropicClient,
+    semaphore: asyncio.Semaphore,
+) -> EvalRecord:
+    item = items_by_id[crit.item_id]
+    arg_item = load_item_argument(item)
+    argument = f"{arg_item.question}\n\n{arg_item.argument}"
+    reference = load_reference(item.id) if config.use_key else {}
+    async with semaphore:
+        scores, dims_runs, raws = [], [], []
+        for _ in range(config.k_grade):
+            gs = await grader_impl.grade(
+                client,
+                model_id=config.grader_model_id,
+                argument=argument,
+                reference=reference,
+                critique=crit.response,
+            )
+            scores.append(gs.score)
+            if gs.dimensions:
+                dims_runs.append(gs.dimensions)
+            raws.append(gs.raw)
+    return EvalRecord(
+        model=crit.model,
+        model_id=crit.model_id,
+        item_id=crit.item_id,
+        soundness=item.soundness,
+        sample=crit.sample,
+        critique_prompt=crit.prompt,
+        critique=crit.response,
+        grader=config.grader,
+        grader_model_id=config.grader_model_id,
+        used_key=config.use_key,
+        score=sum(scores) / len(scores),
+        dimensions=_average_dimensions(dims_runs),
+        grader_raw=raws[-1],
+        input_tokens=crit.usage.input_tokens if crit.usage else 0,
+        output_tokens=crit.usage.output_tokens if crit.usage else 0,
+        timestamp=_utcnow_iso(),
+    )
+
+
+def _average_dimensions(dims_runs: list[dict[str, float]]) -> dict[str, float]:
+    if not dims_runs:
+        return {}
+    return {k: sum(d[k] for d in dims_runs) / len(dims_runs) for k in dims_runs[0]}
+
+
 async def evaluate(
     config: EvalConfig,
     *,
@@ -108,50 +167,19 @@ async def evaluate(
     client = client or AnthropicClient()
     sem = asyncio.Semaphore(concurrency)
 
-    async def grade_one(crit: CritiqueRecord) -> EvalRecord:
-        item = items_by_id[crit.item_id]
-        arg_item = load_item_argument(item)
-        argument = f"{arg_item.question}\n\n{arg_item.argument}"
-        reference = load_reference(item.id) if config.use_key else {}
-        async with sem:
-            scores, dims_runs, raws = [], [], []
-            for _ in range(config.k_grade):
-                gs = await grader_impl.grade(
-                    client,
-                    model_id=config.grader_model_id,
-                    argument=argument,
-                    reference=reference,
-                    critique=crit.response,
-                )
-                scores.append(gs.score)
-                if gs.dimensions:
-                    dims_runs.append(gs.dimensions)
-                raws.append(gs.raw)
-        dims = (
-            {k: sum(d[k] for d in dims_runs) / len(dims_runs) for k in dims_runs[0]}
-            if dims_runs
-            else {}
+    records = await asyncio.gather(
+        *(
+            _grade_critique(
+                c,
+                items_by_id=items_by_id,
+                grader_impl=grader_impl,
+                config=config,
+                client=client,
+                semaphore=sem,
+            )
+            for c in critiques
         )
-        return EvalRecord(
-            model=crit.model,
-            model_id=crit.model_id,
-            item_id=crit.item_id,
-            soundness=item.soundness,
-            sample=crit.sample,
-            critique_prompt=crit.prompt,
-            critique=crit.response,
-            grader=config.grader,
-            grader_model_id=config.grader_model_id,
-            used_key=config.use_key,
-            score=sum(scores) / len(scores),
-            dimensions=dims,
-            grader_raw=raws[-1],
-            input_tokens=crit.usage.input_tokens if crit.usage else 0,
-            output_tokens=crit.usage.output_tokens if crit.usage else 0,
-            timestamp=_utcnow_iso(),
-        )
-
-    records = await asyncio.gather(*(grade_one(c) for c in critiques))
+    )
 
     item_ids = list(dict.fromkeys(r.item_id for r in records))  # first-seen order
     item_results: list[ItemResult] = []

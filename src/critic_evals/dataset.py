@@ -55,6 +55,26 @@ def load_item_argument(item: DatasetItem) -> ArgumentItem:
     return load_argument(item.argument_path)
 
 
+async def _build_critique(
+    item: DatasetItem,
+    sample: int,
+    spec: ModelSpec,
+    *,
+    client: AnthropicClient,
+    arguments: dict[str, ArgumentItem],
+    semaphore: asyncio.Semaphore,
+    max_tokens: int,
+) -> CritiqueRecord:
+    async with semaphore:
+        return await generate_critique(
+            client,
+            spec,
+            arguments[item.id],
+            sample=sample,
+            max_tokens=max_tokens,
+        )
+
+
 async def build_critiques(
     items: Sequence[DatasetItem],
     model_labels: Sequence[str],
@@ -74,20 +94,18 @@ async def build_critiques(
     client = client or AnthropicClient()
     sem = asyncio.Semaphore(concurrency)
 
-    async def one(item: DatasetItem, sample: int, spec: ModelSpec) -> CritiqueRecord:
-        async with sem:
-            return await generate_critique(
-                client,
-                spec,
-                arguments[item.id],
-                sample=sample,
-                max_tokens=max_tokens,
-            )
-
     try:
         return await asyncio.gather(
             *(
-                one(item, sample, spec)
+                _build_critique(
+                    item,
+                    sample,
+                    spec,
+                    client=client,
+                    arguments=arguments,
+                    semaphore=sem,
+                    max_tokens=max_tokens,
+                )
                 for item in items
                 for spec in specs
                 for sample in range(samples)
