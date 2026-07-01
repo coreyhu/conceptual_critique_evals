@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from critic_evals.grading.calibration import CalibrationGrader
 from critic_evals.grading.centrality import CentralityGrader
 from critic_evals.grading.charity import CharityGrader
 from critic_evals.grading.composite import CompositeGrader
-from critic_evals.grading.decisiveness import DecisivenessGrader
 from critic_evals.grading.derivation import DerivationGrader
 from critic_evals.grading.fidelity import FidelityGrader
 from critic_evals.grading.grader import BaseGrader
+from critic_evals.grading.proportionality import ProportionalityGrader
 
 _GRADERS: dict[str, BaseGrader] = {
     g.name: g
@@ -19,8 +18,7 @@ _GRADERS: dict[str, BaseGrader] = {
         CharityGrader(),
         CentralityGrader(),
         DerivationGrader(),
-        DecisivenessGrader(),
-        CalibrationGrader(),
+        ProportionalityGrader(),
     )
 }
 

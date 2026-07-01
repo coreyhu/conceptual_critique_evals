@@ -15,8 +15,10 @@ Reference = dict[str, object]
 @dataclass(frozen=True, slots=True)
 class GraderScore:
     score: float  # 0-1 (a single axis: its normalized level; the composite: the final score)
-    dimensions: dict[str, float]
-    raw: dict[str, object]
+    dimensions: dict[
+        str, float
+    ]  # breakdown of the score by axis (for composite graders)
+    raw: dict[str, object]  # the raw structured output from the LLM
 
 
 def level_score(parsed: dict[str, object], hi: int) -> float:

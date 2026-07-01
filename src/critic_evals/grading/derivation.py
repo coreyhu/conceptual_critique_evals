@@ -1,4 +1,11 @@
-"""Derivation axis: where does the critique's main objection get its force?"""
+"""Derivation axis: where does the critique's main point get its force — asserted, imported, or
+immanent (grounded in the argument's own reasoning)?
+
+Depth-oriented, not flaw-oriented: for a flaw, immanent means turning the argument's own commitments
+against its conclusion; for a SOUND argument, immanent means showing why the conclusion genuinely
+follows from those commitments (engaging the actual inferential structure, not generic praise). So
+the axis rewards depth of engagement on both without routing.
+"""
 
 from __future__ import annotations
 
@@ -14,35 +21,39 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 asserted or lazy imported frame / 1 necessary external premise applied specifically / 2 immanent: turns the argument's own commitments/examples against its conclusion",
+            "description": "0 asserted or a recited label / 1 grounded in a necessary external premise, applied specifically (survives the strip test) / 2 immanent: grounded in the argument's OWN commitments — turning them against its conclusion (a flaw) or showing why the conclusion follows from them (a sound argument)",
         },
         "operative_quote": {
             "type": "string",
-            "description": "what the critique's central flaw rests on",
+            "description": "what the critique's central point rests on",
         },
         "why_not_higher": {
             "type": "string",
-            "description": "if not level 2, explain whether the critique relies on assertion, a label, or an external premise; if level 2, name the argument-owned commitment doing the work",
+            "description": "if not level 2, whether the critique relies on assertion, a label, or an external premise; if level 2, name the argument-owned commitment doing the work",
         },
     },
 }
 
-_PROMPT = """DERIVATION. Focus on the critique's most load-bearing objection — its primary line of attack (the same one the other axes judge); if the critique makes several points, evaluate the one it treats as most important. Rate where its force comes from.
-- 0: miss — asserted or lazy import. It names a flaw without derivation, or recites an external law/frame ('correlation isn't causation', 'Goodhart's law') as a stand-in.
-- 1: good — necessary import. It deploys an external premise the argument cannot reject, to a specific point; it survives the STRIP TEST (remove the imported premise and the flaw still stands).
-- 2: excellent — immanent. It turns the argument's OWN commitments, examples, distinctions, or concessions against its conclusion, using only what the argument already grants.
+_PROMPT = """DERIVATION. Focus on the critique's primary line of engagement — the point it treats as most important (the same one the other axes judge). Rate where its force comes from — how deeply it is grounded in the argument's own reasoning. This applies whether the point is a flaw or an affirmation of a sound argument.
+- 0: miss — asserted or lazy import. A bare claim (a flaw named without derivation, or generic praise like 'well reasoned') or a recited external label ('a slippery slope', 'an appeal to authority') used as a stand-in for engagement.
+- 1: good — necessary import. It grounds the point in an external premise or corroboration the argument cannot reject, applied to a specific point; it survives the STRIP TEST (remove the imported premise and the point still stands).
+- 2: excellent — immanent. It is grounded in the argument's OWN commitments, examples, or distinctions: for a flaw, it turns them against the conclusion; for a SOUND argument, it shows why the conclusion genuinely follows from them (engaging the actual inferential structure, not generic praise) — using only what the argument itself supplies.
 
-Do not award level 2 just because the critique gives a vivid counterexample. If the objection's force depends on adding a new empirical example, outside literature, or a broad external theory, max level 1. Level 2 requires that the damaging premise comes from the argument itself.
+Do not award level 2 for a vivid external counterexample, or for confident praise. If the force depends on adding a new empirical example, outside literature, or a broad external theory, max level 1. Level 2 requires the operative premise to come from the argument itself.
 
 COMMON FALSE TOP-SCORES:
-- The critique gives a concrete external counterexample that is correct and damaging. That is usually level 1, not 2, unless the argument itself already grants the premise the example relies on.
-- The critique uses a named framework ("Goodhart's law", "correlation is not causation", "incentives") and then paraphrases the framework. If the argument-specific derivation disappears when the label is removed, score 0.
-- The critique sounds immanent because it quotes the argument, but the quote only identifies the target. Level 2 requires the quoted commitment to generate the objection.
+- A concrete external counterexample that is correct and damaging is usually level 1, not 2, unless the argument already grants the premise it relies on.
+- A named framework ('a slippery slope', 'begging the question') then paraphrased. If the argument-specific derivation disappears when the label is removed, score 0.
+- Quoting the argument only to identify the target, or restating its conclusion as praise. Level 2 requires the quoted commitment to GENERATE the point (the objection, or the reason the conclusion holds).
 
-EXAMPLES — a rising ladder of critiques of the unrelated argument "Downtown shops are losing customers because the suburban mall offers free parking and downtown charges for it; so make downtown parking free and shoppers return":
-- 0 (miss): "The claim that parking is what drove shoppers away just isn't convincing." Or: "This is a textbook correlation-isn't-causation error." (bare denial or generic label)
-- 1 (good): "Malls also win on selection, anchor stores, and indoor comfort — well-documented drivers of where people shop — so parking cannot be assumed the operative difference." (an external premise the argument can't reject; survives the strip test)
-- 2 (excellent): "The argument's own premise — that shoppers defected to save on parking — casts them as cost-comparison shoppers, who by that same logic also weigh the mall's lower prices and larger selection; so its own model of the shopper makes parking one factor among several, not the decisive cause." (turns the argument's own commitment against its conclusion)
+EXAMPLES — a rising ladder of critiques of the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall":
+- 0 (miss): "The claim that parking drove shoppers away just isn't convincing." Or: "This is just a textbook hasty generalization." (bare denial or generic label)
+- 1 (good): "Malls also win on selection, anchor stores, and comfort — well-documented drivers of where people shop — so parking cannot be assumed the operative difference." (external premise the argument can't reject; survives the strip test)
+- 2 (excellent): "The argument's OWN premise — that shoppers defected to save on parking — casts them as cost-comparison shoppers, who by that logic also weigh the mall's lower prices and selection; so its own model makes parking one factor among several." (turns the argument's own commitment against its conclusion)
+
+EXAMPLES — on the unrelated SOUND argument "one smoker who lived to 95 doesn't refute that smoking lowers life-expectancy averages, which tolerate outliers":
+- 0 (miss): "Sounds right, well argued." (generic praise, no derivation)
+- 2 (excellent): "The argument's own framing — a claim about the population AVERAGE — is precisely what makes the outlier harmless: an average is defined over the whole distribution, so a single long-lived case is exactly the kind of point it already absorbs. The conclusion follows from the argument's own terms." (shows why the conclusion holds from the argument's own commitments)
 
 ARGUMENT:
 {argument}

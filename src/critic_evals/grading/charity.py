@@ -14,7 +14,7 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 central objection attacks a weakman / 1 engages a real but not strongest form / 2 engages the strongest form",
+            "description": "0 central objection attacks a weakman / 1 engages a real but not strongest form / 2 engages the strongest form, OR endorses the argument rather than objecting (no weakman to attack)",
         },
         "evidence": {
             "type": "string",
@@ -34,9 +34,10 @@ The argument's important concessions / pre-empted easy objections are:
 {concessions}
 
 Rate whether the CRITIQUE's central objection engages that strongest form. Top charity is not merely "no strawman." A good critique attacks a real reading; an excellent critique first preserves what makes the argument tempting, including its concessions, and then shows why the objection still works.
+This gate disqualifies only a critique that wins against a version the argument does NOT hold. If the critique ENDORSES the argument rather than raising a central objection (the correct move when the argument is sound), there is no weakman being attacked — score 2.
 - 0: it attacks a WEAKMAN — a version the argument does not actually hold.
 - 1: it engages a real reading, but not the strongest form.
-- 2: it engages the argument's STRONGEST form: the critique's central objection still works after granting the argument's main concessions and modest formulation.
+- 2: it engages the argument's STRONGEST form (its central objection still works after granting the argument's main concessions and modest formulation), OR it endorses the argument rather than objecting.
 
 COMMON FALSE TOP-SCORES:
 - The critique says "even granting..." but grants only a weak concession, not the strongest form listed above. Score 1.
