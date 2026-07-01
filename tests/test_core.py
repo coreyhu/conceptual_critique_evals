@@ -13,6 +13,7 @@ from critic_evals.grading.derivation import DerivationGrader
 from critic_evals.grading.fidelity import FidelityGrader
 from critic_evals.grading.grader import level_score
 from critic_evals.grading.centrality import CentralityGrader
+from critic_evals.grading.synthesis import SynthesisGrader
 from critic_evals.llm.models import MODELS, resolve
 from critic_evals.schema import ArgumentItem, Usage
 from scripts.build_dataset import (
@@ -110,9 +111,11 @@ def test_grader_registry_resolves_names_and_rejects_unknown():
         "centrality",
         "derivation",
         "proportionality",
+        "synthesis",
     }
     assert isinstance(get_grader("composite"), CompositeGrader)
     assert isinstance(get_grader("centrality"), CentralityGrader)
+    assert isinstance(get_grader("synthesis"), SynthesisGrader)
     assert get_grader("centrality").name == "centrality"
     with pytest.raises(KeyError):
         get_grader("does-not-exist")
@@ -233,6 +236,7 @@ def test_composite_preserves_axis_raw_outputs(monkeypatch):
     monkeypatch.setattr(comp, "_CENTRALITY", DummyGrader("centrality", 0.5))
     monkeypatch.setattr(comp, "_DERIVATION", DummyGrader("derivation", 0.5))
     monkeypatch.setattr(comp, "_PROPORTIONALITY", DummyGrader("proportionality", 1.0))
+    monkeypatch.setattr(comp, "_SYNTHESIS", DummyGrader("synthesis", 0.5))
 
     gs = asyncio.run(
         comp.CompositeGrader().grade(
@@ -244,7 +248,9 @@ def test_composite_preserves_axis_raw_outputs(monkeypatch):
         )
     )
 
-    assert gs.score == pytest.approx((1 + 0.5 + 0.5) / 3)
+    expected_core = (0.5 * 0.5 * 1.0 * 0.5) ** (1 / 4)
+    assert gs.score == pytest.approx(expected_core)
+    assert gs.dimensions["validity"] == 1.0
     assert gs.raw["derivation"]["why_not_higher"] == "test diagnostic"
     assert gs.raw["centrality"]["axis"] == "centrality"
 

@@ -20,7 +20,7 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 engages a peripheral / merely-relevant element / 1 engages a genuinely load-bearing element but not shown to be the one the conclusion most depends on / 2 engages the dominant element the conclusion most depends on (a decisive flaw, or the central reasoning of a sound argument), correctly weighted",
+            "description": "0 engages a peripheral / merely-relevant element / 1 engages a genuinely load-bearing element but does not prove dominance or rank it against plausible alternatives / 2 engages the dominant element the conclusion most depends on, explains why it dominates plausible alternative critiques, and correctly subordinates lesser points",
         },
         "evidence": {
             "type": "string",
@@ -39,15 +39,16 @@ This is NOT about finding a flaw. For a FLAWED argument the load-bearing element
 
 As a GUIDE, the argument's known load-bearing gaps are:
 {key}
-(If none are listed, treat the argument as having no decisive flaw — credit the critique for engaging the central reasoning the conclusion stands on, NOT for manufacturing a gap.) A critique may engage an element MORE central than the list; credit that too. Do not award the top level just for naming a listed gap, or for generic praise — top centrality requires correct weighting: the critique must show why this element is the one the conclusion most depends on.
+(If none are listed, treat the argument as having no decisive flaw — credit the critique for engaging the central reasoning the conclusion stands on, NOT for manufacturing a gap.) A critique may engage an element MORE central than the list; credit that too. Do not award the top level just for naming a listed gap, or for generic praise — top centrality requires comparative weighting: the critique must show why this element is the one the conclusion most depends on, not just one important issue.
 - 0: miss — engages a peripheral or merely-relevant element, not what the conclusion rests on.
-- 1: good — engages a genuinely load-bearing element, but does not show it is the dominant one, or ranks it alongside lesser points.
-- 2: excellent — engages the dominant element the conclusion most depends on (a decisive flaw, or the central reasoning of a sound argument), correctly weighted, with lesser points shown to be subordinate.
+- 1: good — engages a genuinely load-bearing element, but does not show it is the dominant one, or ranks it alongside lesser points without explaining the priority.
+- 2: excellent — engages the dominant element the conclusion most depends on (a decisive flaw, or the central reasoning of a sound argument), and explicitly or clearly implicitly explains why plausible other issues are secondary.
 
 COMMON FALSE TOP-SCORES:
 - Names a listed gap (or, for a sound argument, merely restates the conclusion) without showing why it is the load-bearing element rather than one concern among several. Score 1.
 - Lists many points. Breadth does not imply centrality unless it ranks the main one and explains why the rest are subordinate.
 - Uses broad language ("the core issue", "the real problem") but never justifies the weighting. Do not infer dominance from confident wording.
+- Finds the right paragraph or topic but treats several objections as co-equal. Score 1 unless the critique makes a priority claim that would guide revision.
 
 EXAMPLES — a rising ladder of critiques of the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall":
 - 0 (miss): "It never gives figures for the customer loss or tax revenue." (real observations, but not what the conclusion stands on)

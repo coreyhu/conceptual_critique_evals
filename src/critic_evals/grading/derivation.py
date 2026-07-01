@@ -21,7 +21,7 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 asserted or a recited label / 1 grounded in a necessary external premise, applied specifically (survives the strip test) / 2 immanent: grounded in the argument's OWN commitments — turning them against its conclusion (a flaw) or showing why the conclusion follows from them (a sound argument)",
+            "description": "0 asserted or a recited label / 1 grounded in a necessary external premise or in quoted text that only identifies the target / 2 immanent: an argument-owned commitment generates the critique's point, turning it against the conclusion or explaining why the conclusion follows",
         },
         "operative_quote": {
             "type": "string",
@@ -36,15 +36,16 @@ _SCHEMA: dict[str, object] = {
 
 _PROMPT = """DERIVATION. Focus on the critique's primary line of engagement — the point it treats as most important (the same one the other axes judge). Rate where its force comes from — how deeply it is grounded in the argument's own reasoning. This applies whether the point is a flaw or an affirmation of a sound argument.
 - 0: miss — asserted or lazy import. A bare claim (a flaw named without derivation, or generic praise like 'well reasoned') or a recited external label ('a slippery slope', 'an appeal to authority') used as a stand-in for engagement.
-- 1: good — necessary import. It grounds the point in an external premise or corroboration the argument cannot reject, applied to a specific point; it survives the STRIP TEST (remove the imported premise and the point still stands).
-- 2: excellent — immanent. It is grounded in the argument's OWN commitments, examples, or distinctions: for a flaw, it turns them against the conclusion; for a SOUND argument, it shows why the conclusion genuinely follows from them (engaging the actual inferential structure, not generic praise) — using only what the argument itself supplies.
+- 1: good — necessary import or text-supported diagnosis. It grounds the point in an external premise or corroboration the argument cannot reject, applied to a specific point; OR it quotes/paraphrases the argument accurately but uses the text mainly to identify the target rather than to generate the objection. It survives the STRIP TEST (remove the imported premise and the point still stands).
+- 2: excellent — immanent. The argument's OWN commitments, examples, or distinctions GENERATE the point: for a flaw, the critique turns those commitments against the conclusion; for a SOUND argument, it shows why the conclusion genuinely follows from them (engaging the actual inferential structure, not generic praise). The point should be hard to make without the argument's specific reasoning.
 
-Do not award level 2 for a vivid external counterexample, or for confident praise. If the force depends on adding a new empirical example, outside literature, or a broad external theory, max level 1. Level 2 requires the operative premise to come from the argument itself.
+Do not award level 2 for a vivid external counterexample, for confident praise, or for merely quoting the right sentence. If the force depends on adding a new empirical example, outside literature, or a broad external theory, max level 1. Level 2 requires the operative premise to come from the argument itself AND to do the work of the critique.
 
 COMMON FALSE TOP-SCORES:
 - A concrete external counterexample that is correct and damaging is usually level 1, not 2, unless the argument already grants the premise it relies on.
 - A named framework ('a slippery slope', 'begging the question') then paraphrased. If the argument-specific derivation disappears when the label is removed, score 0.
 - Quoting the argument only to identify the target, or restating its conclusion as praise. Level 2 requires the quoted commitment to GENERATE the point (the objection, or the reason the conclusion holds).
+- Correctly saying "the argument itself says X" but then applying a generic objection to X. Score 1 unless X itself creates the contradiction, limitation, or support.
 
 EXAMPLES — a rising ladder of critiques of the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall":
 - 0 (miss): "The claim that parking drove shoppers away just isn't convincing." Or: "This is just a textbook hasty generalization." (bare denial or generic label)

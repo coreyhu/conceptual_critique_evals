@@ -41,7 +41,7 @@ _SCHEMA: dict[str, object] = {
         "level": {
             "type": "integer",
             "enum": [0, 1, 2],
-            "description": "0 miscalibrated (over-calls a sound/fixable point as fatal, OR under-calls/misses a decisive flaw, OR rubber-stamps) / 1 proportionate (verdict matches the argument's actual merit, engages the reasoning) / 2 proportionate AND illuminating (establishes the verdict rigorously and/or adds a real boundary or sharpening)",
+            "description": "0 miscalibrated (over-calls a sound/fixable point as fatal, OR under-calls/misses a decisive flaw, OR rubber-stamps) / 1 proportionate (verdict matches the argument's actual merit, engages the reasoning) / 2 proportionate AND rigorously adjudicated (establishes why this severity follows, handles tempting over/under-calls, and adds a real boundary or sharpening)",
         },
         "why_not_higher": {
             "type": "string",
@@ -57,9 +57,10 @@ STEP 1 — Judge the ARGUMENT on its own, from the text: is its central reasonin
 STEP 2 — Read the CRITIQUE's operative verdict and rate whether it FITS that merit:
 - 0: miscalibrated — it OVER-calls (manufactures a flaw in sound reasoning, or declares a minor/fixable flaw fatal) OR UNDER-calls (misses or downplays a genuinely decisive flaw, or rubber-stamps without engaging the reasoning).
 - 1: proportionate — the verdict matches the argument's actual merit: it affirms what is sound and names what is genuinely wrong, at the right severity, and engages the reasoning.
-- 2: proportionate and illuminating — as level 1, and it ESTABLISHES the verdict rigorously (shows why a fatal flaw truly defeats the conclusion, or why the argument survives a tempting objection) and/or adds a real, proportionate boundary condition, limitation, or sharpening.
+- 2: proportionate and rigorously adjudicated — as level 1, and it ESTABLISHES why this severity follows rather than a weaker or stronger verdict (shows why a fatal flaw truly defeats the conclusion, why a fixable gap is not fatal, or why the argument survives a tempting objection) and adds a real, proportionate boundary condition, limitation, or sharpening.
 
 Judge the ACTUAL fit, not the critique's confidence: a critique that merely SOUNDS decisive while over- or under-calling is a 0.
+Do not award level 2 merely for a correct verdict. A critique that says "mostly right but incomplete" or "flawed in this way" without adjudicating why that is the right severity is level 1.
 
 EXAMPLES — on the unrelated FLAWED argument "make downtown parking free to win shoppers back from the free-parking mall" (whose real flaw is assuming parking, not selection/comfort, is the binding cause):
 - 0: "This argument is worthless — it never even defines 'customer,' so the whole thing collapses." (over-calls a trivial gap as fatal) / "Seems reasonable to me." (under-calls — rubber-stamps a flawed argument)

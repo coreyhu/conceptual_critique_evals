@@ -9,6 +9,7 @@ from critic_evals.grading.derivation import DerivationGrader
 from critic_evals.grading.fidelity import FidelityGrader
 from critic_evals.grading.grader import BaseGrader
 from critic_evals.grading.proportionality import ProportionalityGrader
+from critic_evals.grading.synthesis import SynthesisGrader
 
 _GRADERS: dict[str, BaseGrader] = {
     g.name: g
@@ -19,6 +20,7 @@ _GRADERS: dict[str, BaseGrader] = {
         CentralityGrader(),
         DerivationGrader(),
         ProportionalityGrader(),
+        SynthesisGrader(),
     )
 }
 
